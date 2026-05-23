@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Upload - Public Health System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans flex h-screen">
+
+    <aside class="w-64 bg-slate-900 text-white flex flex-col transition-all">
+        <div class="p-6 border-b border-slate-800">
+            <div class="flex items-center gap-2 text-blue-400 mb-2">
+                <i data-feather="activity"></i>
+                <span class="text-xl font-bold tracking-tight">NPH-DARS</span>
+            </div>
+            <p class="text-xs text-slate-400">Public Health Data System</p>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="{% url 'dashboard' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-feather="bar-chart-2"></i> Dashboard
+            </a>
+            <a href="{% url 'data_entry' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-feather="plus-circle"></i> Enter Data
+            </a>
+            <a href="{% url 'bulk_upload' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 text-white shadow-md">
+                <i data-feather="upload-cloud"></i> Bulk Upload
+            </a>
+            
+            {% if request.user.is_superuser %}
+            <a href="{% url 'add_facility' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-feather="map-pin"></i> Add Facility
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 mt-auto">
+            <form action="{% url 'logout' %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-red-500 hover:text-white transition-all duration-200">
+                    <i data-feather="log-out"></i> Logout
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto">
+        <header class="bg-white border-b border-slate-200 p-6">
+            <h1 class="text-2xl font-semibold capitalize text-slate-800">Bulk Data Upload</h1>
+        </header>
+        
+        <div class="p-8">
+            <div class="max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                
+                <div class="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 class="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2">
+                        <i data-feather="info" class="w-4 h-4"></i> CSV Format Requirement
+                    </h3>
+                    <p class="text-sm text-blue-700">Your CSV file must have the following exact column headers (case-sensitive) in the first row:</p>
+                    <code class="block mt-2 bg-white px-3 py-2 border border-blue-200 rounded text-xs text-slate-600">
+                        Facility,Date,Disease,Cases,Deaths
+                    </code>
+                    <p class="text-xs text-blue-600 mt-2">* Dates must be in YYYY-MM-DD format.</p>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="mb-6 p-4 rounded-lg flex items-center gap-2 border text-sm font-medium
+                            {% if message.tags == 'error' %}bg-red-50 text-red-700 border-red-200{% else %}bg-green-50 text-green-700 border-green-200{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                    {% csrf_token %}
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center hover:bg-slate-50 transition-colors">
+                        <i data-feather="upload-cloud" class="w-12 h-12 text-slate-400 mx-auto mb-4"></i>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 cursor-pointer">
+                            Click to browse for a .csv file
+                            <input type="file" name="csv_file" accept=".csv" class="block w-full text-sm text-slate-500 mt-4 mx-auto file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" required>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium p-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                        <i data-feather="database" class="w-5 h-5"></i> Process and Import Data
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+      feather.replace()
+    </script>
+</body>
+</html>

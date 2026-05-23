@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Facility - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans flex h-screen">
+
+    <aside class="w-64 bg-slate-900 text-white flex flex-col transition-all">
+        <div class="p-6 border-b border-slate-800">
+            <div class="flex items-center gap-2 text-blue-400 mb-2">
+                <i data-feather="activity"></i>
+                <span class="text-xl font-bold tracking-tight">NPH-DARS</span>
+            </div>
+            <p class="text-xs text-slate-400">Public Health Data System</p>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="{% url 'dashboard' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-feather="bar-chart-2"></i> Dashboard
+            </a>
+            <a href="{% url 'data_entry' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-feather="plus-circle"></i> Enter Data
+            </a>
+            
+            {% if request.user.is_superuser %}
+            <a href="{% url 'add_facility' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 text-white shadow-md">
+                <i data-feather="map-pin"></i> Add Facility
+            </a>
+            {% endif %}
+            <a href="{% url 'bulk_upload' %}" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <i data-feather="upload-cloud"></i> Bulk Upload
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 mt-auto">
+            <form action="{% url 'logout' %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-red-500 hover:text-white transition-all duration-200">
+                    <i data-feather="log-out"></i> Logout
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto">
+        <header class="bg-white border-b border-slate-200 p-6">
+            <div class="flex items-center gap-3">
+                <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Admin</span>
+                <h1 class="text-2xl font-semibold capitalize text-slate-800">System Configuration</h1>
+            </div>
+        </header>
+        
+        <div class="p-8">
+            <div class="max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Register New Health Facility</h2>
+                    <p class="text-sm text-slate-500 mt-1">Add a new hospital or clinic to the national reporting grid.</p>
+                </div>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="mb-6 p-4 rounded-lg flex items-center gap-2 border text-sm font-medium bg-green-50 text-green-700 border-green-200">
+                            <i data-feather="check-circle" class="w-5 h-5"></i> {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="POST" class="space-y-6">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Facility Name</label>
+                        {{ form.name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">State / Location</label>
+                        {{ form.location }}
+                    </div>
+                    <div class="pt-4">
+                        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium p-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                            <i data-feather="save" class="w-5 h-5"></i> Save Facility
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+      feather.replace()
+    </script>
+</body>
+</html>

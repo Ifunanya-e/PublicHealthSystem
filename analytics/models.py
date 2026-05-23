@@ -1,25 +1,33 @@
 from django.db import models
+from django.contrib.auth.models import User
 
-# Create your models here.
-#  Table for Health Facilities (where vaccines are given)
+# Facility Table
 class HealthFacility(models.Model):
-    facility_name = models.CharField(max_length=200)
-    location = models.CharField(max_length=200)
-    
-    # ADD THIS LINES BELOW FOR PLURALITY:
-    class Meta:
-        verbose_name_plural = "Health Facilities"
+    name = models.CharField(max_length=255)
+    location = models.CharField(max_length=255)
 
     def __str__(self):
-        return self.facility_name
+        return self.name
 
-#  Table for the actual Vaccine/Disease data
+# Disease Record Table
 class DiseaseRecord(models.Model):
+    DISEASE_CHOICES = [
+        ('Malaria', 'Malaria'),
+        ('Cholera', 'Cholera'),
+        ('Lassa Fever', 'Lassa Fever'),
+        ('COVID-19', 'COVID-19'),
+        ('Measles', 'Measles'),
+        ('Typhoid', 'Typhoid'),
+    ]
+    
     facility = models.ForeignKey(HealthFacility, on_delete=models.CASCADE)
-    disease_name = models.CharField(max_length=100) # e.g., 'BCG Vaccine'
-    cases = models.IntegerField(default=0) # Number of people vaccinated
-    deaths = models.IntegerField(default=0) # Adverse reactions or related deaths
+    disease_name = models.CharField(max_length=100, choices=DISEASE_CHOICES)
+    cases = models.PositiveIntegerField()
+    deaths = models.PositiveIntegerField()
     report_date = models.DateField()
+    
+    # Links to the built-in Django User who submitted the data
+    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.disease_name} - {self.report_date}"
+        return f"{self.disease_name} - {self.facility.name} ({self.report_date})"
