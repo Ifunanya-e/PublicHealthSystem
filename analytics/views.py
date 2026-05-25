@@ -1,3 +1,7 @@
+from datetime import timedelta
+from django.utils import timezone
+import json
+from django.http import HttpResponse
 import csv
 import io
 from django.shortcuts import render, redirect
@@ -24,6 +28,10 @@ def dashboard_view(request):
             disease_stats[record.disease_name] += record.cases
         else:
             disease_stats[record.disease_name] = record.cases
+            
+    # 4. PREPARE DATA FOR CHART.JS
+    chart_labels = list(disease_stats.keys())
+    chart_data = list(disease_stats.values())
 
     # 4. Send all this data to the HTML template
     context = {
@@ -31,7 +39,8 @@ def dashboard_view(request):
         'facilities_count': facilities.count(),
         'total_cases': total_cases,
         'total_deaths': total_deaths,
-        'disease_stats': disease_stats,
+        'chart_labels': json.dumps(chart_labels),
+        'chart_data': json.dumps(chart_data),
     }
     
     return render(request, 'analytics/dashboard.html', context)
@@ -133,3 +142,122 @@ def bulk_upload_view(request):
             return redirect('bulk_upload')
 
     return render(request, 'analytics/bulk_upload.html')
+
+@login_required(login_url='/')
+def reports_view(request):
+    # 1. Start by fetching ALL records
+    records = DiseaseRecord.objects.all().order_by('-report_date')
+    facilities = HealthFacility.objects.all()
+    
+    # Get a list of unique diseases for our dropdown filter
+    diseases = DiseaseRecord.objects.values_list('disease_name', flat=True).distinct()
+
+    # 2. Get the search filters typed by the user
+    facility_id = request.GET.get('facility')
+    disease = request.GET.get('disease')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    # 3. Apply the filters to our data
+    if facility_id:
+        records = records.filter(facility_id=facility_id)
+    if disease:
+        records = records.filter(disease_name=disease)
+    if start_date:
+        records = records.filter(report_date__gte=start_date)
+    if end_date:
+        records = records.filter(report_date__lte=end_date)
+
+    # 4. The MAGIC: If they clicked "Export", generate a CSV instead of a webpage
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="custom_health_report.csv"'
+        
+        writer = csv.writer(response)
+        # Write the header row
+        writer.writerow(['Date', 'Facility', 'Disease', 'Cases', 'Deaths'])
+        
+        # Write the actual data
+        for record in records:
+            writer.writerow([record.report_date, record.facility.name, record.disease_name, record.cases, record.deaths])
+            
+        return response
+
+    # 5. If they didn't click export, just show the normal web page
+    context = {
+        'records': records,
+        'facilities': facilities,
+        'diseases': diseases,
+    }
+    return render(request, 'analytics/reports.html', context)
+
+@login_required(login_url='/')
+def forecast_view(request):
+    # 1. Set our timelines
+    today = timezone.now().date()
+    thirty_days_ago = today - timedelta(days=30)
+    sixty_days_ago = today - timedelta(days=60)
+
+    # 2. Get Historical Data
+    recent_records = DiseaseRecord.objects.filter(report_date__gte=thirty_days_ago)
+    past_records = DiseaseRecord.objects.filter(report_date__gte=sixty_days_ago, report_date__lt=thirty_days_ago)
+
+    recent_cases = recent_records.aggregate(Sum('cases'))['cases__sum'] or 0
+    past_cases = past_records.aggregate(Sum('cases'))['cases__sum'] or 0
+
+    # 3. Calculate the Trend Percentage
+    if past_cases == 0:
+        trend_percent = 0 if recent_cases == 0 else 100
+    else:
+        trend_percent = round(((recent_cases - past_cases) / past_cases) * 100, 1)
+
+    # 4. Identify the Hotspots (Get the Top 3 instead of just 1)
+    top_diseases = recent_records.values('disease_name').annotate(total=Sum('cases')).order_by('-total')[:3]
+    top_facilities = recent_records.values('facility__name').annotate(total=Sum('cases')).order_by('-total')[:3]
+
+    # Extract just the names into a list so we can display them easily
+    disease_list = [d['disease_name'] for d in top_diseases] if top_diseases else ["Unknown"]
+    facility_list = [f['facility__name'] for f in top_facilities] if top_facilities else ["Unknown"]
+
+    # 5. THE RISK ENGINE: Generate Automated Text Summaries
+    if trend_percent > 15:
+        risk_level = "HIGH RISK / OUTBREAK WARNING"
+        risk_color = "red"
+        insight_text = f"Critical alert: Overall cases have spiked by {trend_percent}% in the last 30 days. The primary drivers of this surge are {', '.join(disease_list)}."
+        recommendation = f"Immediate resource deployment recommended for {', '.join(facility_list)}. Initiate emergency containment protocols."
+    elif trend_percent > 0:
+        risk_level = "MODERATE RISK"
+        risk_color = "yellow"
+        insight_text = f"Warning: Cases are trending upward by {trend_percent}% compared to the previous month. Most frequently reported: {', '.join(disease_list)}."
+        recommendation = f"Increase active surveillance at {', '.join(facility_list)} and prepare relevant diagnostic kits."
+    else:
+        risk_level = "LOW RISK"
+        risk_color = "green"
+        insight_text = f"Stable: Epidemic curve is flattening. Cases have decreased by {abs(trend_percent)}% in the last 30 days."
+        recommendation = "Maintain standard monitoring and reporting protocols across all facilities."
+        
+    # 6. Generate Chart Data (Next 30 Days Forecast)
+    daily_avg = recent_cases / 30 if recent_cases > 0 else 0
+    future_labels = []
+    future_data = []
+    
+    current_projected = daily_avg
+    for i in range(1, 31):
+        future_date = today + timedelta(days=i)
+        future_labels.append(future_date.strftime("%b %d"))
+        # Add a tiny bit of compounding daily growth/decline based on the trend
+        current_projected *= (1 + ((trend_percent/100)/30)) 
+        future_data.append(round(current_projected))
+
+    context = {
+        'risk_level': risk_level,
+        'risk_color': risk_color,
+        'insight_text': insight_text,
+        'recommendation': recommendation,
+        'top_diseases': top_diseases,
+        'top_facilities': top_facilities,
+        'chart_labels': json.dumps(future_labels),
+        'chart_data': json.dumps(future_data),
+    }
+    
+    return render(request, 'analytics/forecasts.html', context)

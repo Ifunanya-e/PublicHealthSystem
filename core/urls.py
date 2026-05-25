@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path
 from django.contrib.auth import views as auth_views # Add this import
 from analytics.views import dashboard_view
-from analytics.views import dashboard_view, data_entry_view, add_facility_view, bulk_upload_view
+from analytics.views import dashboard_view, data_entry_view, add_facility_view, bulk_upload_view, reports_view, forecast_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -40,5 +40,11 @@ urlpatterns = [
     
     # 6. Bulk Uploads
     path('bulk-upload/', bulk_upload_view, name='bulk_upload'),
+    
+    # 7. Reports
+    path('reports/', reports_view, name='reports'),
+    
+    # 8. Forcast
+    path('forecasts/', forecast_view, name='forecasts'),
 ]
 
